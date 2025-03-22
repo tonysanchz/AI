@@ -14,7 +14,7 @@ data = pd.read_csv('AI.csv', header=None, on_bad_lines='skip')
 questions = data[0].tolist()
 answers = ["<start> " + ans + " <end>" for ans in data[1].tolist()]
 
-# Tạo tokenizer và mã hóa các câu
+# Tạo tokenizer mã hóa 
 tokenizer = Tokenizer()
 tokenizer.fit_on_texts(questions + answers)
 
@@ -33,18 +33,18 @@ word_index = tokenizer.word_index
 index_word = {v: k for k, v in word_index.items()}
 vocab_size = len(word_index) + 1
 
-# Tạo mô hình Seq2Seq
+# Seq2Seq
 embedding_dim = 50
 latent_dim = 256
 
-# Bộ mã hóa
+# mã hóa
 encoder_inputs = Input(shape=(max_question_len,))
 encoder_embedding = Embedding(vocab_size, embedding_dim)(encoder_inputs)
 encoder_lstm = LSTM(latent_dim, return_state=True)
 encoder_outputs, state_h, state_c = encoder_lstm(encoder_embedding)
 encoder_states = [state_h, state_c]
 
-# Bộ giải mã
+# giải mã
 decoder_inputs = Input(shape=(max_answer_len,))
 decoder_embedding = Embedding(vocab_size, embedding_dim)(decoder_inputs)
 decoder_lstm = LSTM(latent_dim, return_sequences=True, return_state=True)
@@ -52,7 +52,7 @@ decoder_outputs, _, _ = decoder_lstm(decoder_embedding, initial_state=encoder_st
 decoder_dense = Dense(vocab_size, activation='softmax')
 decoder_outputs = decoder_dense(decoder_outputs)
 
-# Mô hình Seq2Seq
+# Seq2Seq
 model = Model([encoder_inputs, decoder_inputs], decoder_outputs)
 model.compile(optimizer='adam', loss='sparse_categorical_crossentropy')
 
@@ -77,7 +77,7 @@ decoder_model = Model(
     [decoder_inputs] + decoder_states_inputs, [decoder_outputs] + decoder_states
 )
 
-# Hàm dự đoán câu trả lời
+# dự đoán câu trả lời
 def decode_sequence(input_seq):
     states_value = encoder_model.predict(input_seq)
     target_seq = np.zeros((1, 1))
@@ -96,24 +96,12 @@ def decode_sequence(input_seq):
         states_value = [h, c]
     return decoded_sentence.replace('<end>', '').strip()
 
-# Hàm tiền xử lý
+# tiền xử lý
 def preprocess_input(text):
     seq = tokenizer.texts_to_sequences([text])
     padded_seq = pad_sequences(seq, maxlen=max_question_len, padding='post')
     return padded_seq
 
-# Hàm gọi Ollama qua dòng lệnh
-def ollama_generate(prompt):
-    try:
-        # Gọi lệnh Ollama qua subprocess
-        result = subprocess.run(
-            ["ollama", "chat", "--prompt", prompt],
-            capture_output=True, text=True, check=True
-        )
-        return result.stdout.strip()
-    except subprocess.CalledProcessError as e:
-        print(f"Lỗi khi gọi Ollama: {e}")
-        return None
 
 # Hàm xử lý phản hồi
 def chatbot_response(user_input, use_ollama=True):
@@ -125,7 +113,6 @@ def chatbot_response(user_input, use_ollama=True):
     input_seq = preprocess_input(user_input)
     return decode_sequence(input_seq)
 
-# Đặt câu hỏi và nhận câu trả lời
 user_input = "how are you"
 response = chatbot_response(user_input, use_ollama=True)
 print("Bot:", response)
